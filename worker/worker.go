@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/rpc"
+	"os"
 
 	"uk.ac.bris.cs/gameoflife/gol"
 	"uk.ac.bris.cs/gameoflife/util"
@@ -233,6 +234,16 @@ func (e *GOLWorker) GetAliveCount(_ struct{}, res *int) error {
 		}
 	}
 	*res = count
+	return nil
+}
+
+// helper func to make worker shut down on keypress
+func (e *GOLWorker) Shutdown(_ struct{}, _ *struct{}) error {
+	fmt.Println("shutdown signal recieved, stopping worker.")
+
+	go func() {
+		os.Exit(0)
+	}()
 	return nil
 }
 

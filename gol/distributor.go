@@ -3,6 +3,7 @@ package gol
 import (
 	"fmt"
 	"net/rpc"
+	"os"
 	"time"
 
 	"uk.ac.bris.cs/gameoflife/util"
@@ -44,7 +45,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		}
 	}
 
-	client, err := rpc.Dial("tcp", "54.227.110.28:8030") // your AWS public IP + port
+	client, err := rpc.Dial("tcp", "98.93.46.234:8030") // your AWS public IP + port
 	if err != nil {
 		fmt.Println("Error connecting to worker:", err)
 		return
@@ -112,15 +113,28 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 			case 'p':
 				if !paused {
 					paused = true
+					fmt.Println("paused at turn:", turn)
 					c.events <- StateChange{turn, Paused}
 				} else {
 					paused = false
+					fmt.Println("continuing")
 					c.events <- StateChange{turn, Executing}
 				}
 			case 's':
 				saveImage(p, c, world, turn)
 			case 'q':
 				quitting = true
+				fmt.Println("quitting, sending signal to worker")
+				client.Call("GOLWorker.Shutdown", struct{}{}, nil)
+
+			case 'k':
+				fmt.Println("shutting down full system")
+				client.Call("GOLWorker.Shutdown", struct{}{}, nil)
+				saveImage(p, c, world, turn)
+				c.events <- StateChange{turn, Quitting}
+				close(c.events)
+				os.Exit(0)
+
 			}
 			continue
 		default:
