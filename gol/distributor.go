@@ -44,6 +44,12 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		}
 	}
 
+	client, err := rpc.Dial("tcp", "54.227.110.28:8030") // your AWS public IP + port
+	if err != nil {
+		fmt.Println("Error connecting to worker:", err)
+		return
+	}
+
 	// Start ticker to report alive cells every 2 seconds
 	ticker := time.NewTicker(2 * time.Second)
 	//Channel used to sognal the goroutine to stop
@@ -56,16 +62,15 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 			select {
 			// Case runs every time the timer ticks (every 2 seconds)
 			case <-ticker.C:
-				aliveCount := 0
+				var aliveCount int
 
-				//loop to count alive cells
-				for y := 0; y < p.ImageHeight; y++ {
-					for x := 0; x < p.ImageWidth; x++ {
-						if world[y][x] == 255 {
-							aliveCount++
-						}
-					}
+				err := client.Call("GOLWorker.GetAliveCount", struct{}{}, &aliveCount)
+
+				if err != nil {
+					fmt.Println("Error calling GetAliveCount:", err)
+					continue
 				}
+
 				c.events <- AliveCellsCount{
 					CompletedTurns: turn,
 					CellsCount:     aliveCount,
@@ -98,11 +103,6 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 	paused := false
 	quitting := false
 
-	client, err := rpc.Dial("tcp", "98.93.77.210:8030") // your AWS public IP + port
-	if err != nil {
-		fmt.Println("Error connecting to worker:", err)
-		return
-	}
 	defer client.Close()
 
 	for {

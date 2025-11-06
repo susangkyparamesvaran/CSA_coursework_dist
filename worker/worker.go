@@ -9,7 +9,10 @@ import (
 	"uk.ac.bris.cs/gameoflife/util"
 )
 
-type GOLWorker struct{}
+type GOLWorker struct {
+	world  [][]byte
+	params gol.Params
+}
 
 type WorkerRequest struct {
 	Params gol.Params
@@ -83,9 +86,14 @@ func (e *GOLWorker) ProcessTurns(req WorkerRequest, res *WorkerResponse) error {
 		}
 	}
 
-	// Populate response
+	// Populate response -> this is getting sent back to the local machine
 	res.World = newWorld
 	res.Alive = gol.AliveCells(newWorld, p.ImageWidth, p.ImageHeight)
+
+	//this is just updating the internal state, so server can keep track of the worlds state after a turn
+	//otherwise worker would forget what world its simulating after each turn
+	e.world = newWorld
+	e.params = p
 
 	return nil
 }
@@ -212,6 +220,20 @@ func assignSections(height, threads int) []section {
 		start = end
 	}
 	return sections
+}
+
+// counting alive cells, doesn't acc need any parameters but cuz its gotta follow format hence _ struct{}
+func (e *GOLWorker) GetAliveCount(_ struct{}, res *int) error {
+	count := 0
+	for y := 0; y < e.params.ImageHeight; y++ {
+		for x := 0; x < e.params.ImageWidth; x++ {
+			if e.world[y][x] == 255 {
+				count++
+			}
+		}
+	}
+	*res = count
+	return nil
 }
 
 func main() {
