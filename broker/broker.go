@@ -99,7 +99,7 @@ func (broker *Broker) ProcessTurn(req gol.BrokerRequest, res *gol.BrokerResponse
 			}
 
 			var sectionRes gol.SectionResponse
-			if err := client.Call("GOLWorker.ProcessSection", sectionReq, &sectionRes); err != nil {
+			if err := client.Call("GOLWorker.ProcessTurn", sectionReq, &sectionRes); err != nil {
 				resultsChan <- sectionResult{err: fmt.Errorf("dial %s: %w", address, err)}
 				return
 			}
