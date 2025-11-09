@@ -8,6 +8,29 @@ type Params struct {
 	ImageHeight int
 }
 
+// request from local controller to broker
+type BrokerRequest struct {
+	Params Params
+	World  [][]byte
+}
+
+// response from broker to local controller
+type BrokerResponse struct {
+	World [][]byte
+}
+
+type SectionRequest struct {
+	Params Params
+	World  [][]byte
+	StartY int
+	EndY   int
+}
+
+type SectionResponse struct {
+	StartY  int
+	Section [][]byte
+}
+
 /*
 *** Step 1 ***
 - reads the initial PGM through the IO goroutine (via channels)

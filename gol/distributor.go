@@ -18,16 +18,6 @@ type distributorChannels struct {
 	ioInput    <-chan uint8
 }
 
-type WorkerRequest struct {
-	Params Params
-	World  [][]byte
-}
-
-type WorkerResponse struct {
-	World [][]byte
-	Alive []util.Cell
-}
-
 // distributor divides the work between workers and interacts with other goroutines.
 func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 
@@ -45,9 +35,9 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		}
 	}
 
-	client, err := rpc.Dial("tcp", "98.93.46.234:8030") // your AWS public IP + port
+	client, err := rpc.Dial("tcp", "needs to dial BROKER PORT") // your AWS public IP + port
 	if err != nil {
-		fmt.Println("Error connecting to worker:", err)
+		fmt.Println("Error connecting to broker:", err)
 		return
 	}
 
@@ -150,14 +140,14 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 			continue
 		}
 
-		request := WorkerRequest{
+		request := BrokerRequest{
 			Params: p,
 			World:  world,
 		}
 
-		var response WorkerResponse
+		var response BrokerResponse
 
-		err = client.Call("GOLWorker.ProcessTurns", request, &response)
+		err = client.Call("GOLWorker.ProcessSection", request, &response)
 		if err != nil {
 			fmt.Println("Error calling remote worker:", err)
 			quitting = true
@@ -211,7 +201,6 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 
 	//Close the channels to stop the SDL goroutine gracefully. Removing may cause deadlock.
 	close(c.events)
-	return
 
 }
 
