@@ -41,6 +41,8 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		return
 	}
 
+	defer client.Close()
+
 	// Start ticker to report alive cells every 2 seconds
 	ticker := time.NewTicker(2 * time.Second)
 	//Channel used to sognal the goroutine to stop
@@ -55,7 +57,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 			case <-ticker.C:
 				var aliveCount int
 
-				err := client.Call("GOLWorker.GetAliveCount", struct{}{}, &aliveCount)
+				err := client.Call("Broker.GetAliveCount", struct{}{}, &aliveCount)
 
 				if err != nil {
 					fmt.Println("Error calling GetAliveCount:", err)
@@ -94,8 +96,6 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 	paused := false
 	quitting := false
 
-	defer client.Close()
-
 	for {
 		select {
 		case key := <-keypress:
@@ -113,16 +113,23 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 			case 's':
 				saveImage(p, c, world, turn)
 			case 'q':
-				quitting = true
+				saveImage(p, c, world, turn)
+				client.Call("Broker.ControllerExit", Empty{}, &Empty{})
+				done <- true
+				ticker.Stop()
+				c.events <- StateChange{turn, Quitting}
 				fmt.Println("quitting, sending signal to worker")
-				client.Call("GOLWorker.Shutdown", struct{}{}, nil)
+				close(c.events)
+				return
 
 			case 'k':
-				fmt.Println("shutting down full system")
-				client.Call("GOLWorker.Shutdown", struct{}{}, nil)
 				saveImage(p, c, world, turn)
+				client.Call("Broker.KillWorkers", Empty{}, &Empty{})
+				done <- true
+				ticker.Stop()
 				c.events <- StateChange{turn, Quitting}
 				close(c.events)
+				fmt.Println("shutting down full system")
 				os.Exit(0)
 
 			}
@@ -147,9 +154,9 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 
 		var response BrokerResponse
 
-		err = client.Call("GOLWorker.ProcessSection", request, &response)
+		err = client.Call("Broker.ProcessSection", request, &response)
 		if err != nil {
-			fmt.Println("Error calling remote worker:", err)
+			fmt.Println("Error calling broker.ProcessSection:", err)
 			quitting = true
 			continue
 		}
