@@ -118,7 +118,7 @@ func calculateNextStates(p gol.Params, world [][]byte, startY, endY int) [][]byt
 
 func main() {
 
-	err := rpc.Register(new(GOLWorker))
+	err := rpc.RegisterName("GOLWorker", new(GOLWorker))
 
 	if err != nil {
 		fmt.Println("Error registering RPC:", err)
