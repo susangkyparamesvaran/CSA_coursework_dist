@@ -185,7 +185,8 @@ func main() {
 
 	broker := &Broker{
 		workerAddresses: []string{
-			"54.209.189.255:8030",
+			"44.211.98.86:8030",
+			"3.236.245.14:8030",
 		},
 	}
 
@@ -216,3 +217,4 @@ func main() {
 		go rpc.ServeConn(conn)
 	}
 }
+
