@@ -49,7 +49,12 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		}
 	}
 
-	client, err := rpc.Dial("tcp", "127.0.0.1:8040") // your AWS public IP + port
+	addr := os.Getenv("BROKER_ADDR")
+	if addr == "" {
+		addr = "127.0.0.1:8040" // fallback for local testing
+	}
+
+	client, err := rpc.Dial("tcp", addr)
 	if err != nil {
 		fmt.Println("Error connecting to broker:", err)
 		return
