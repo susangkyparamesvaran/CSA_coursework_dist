@@ -197,7 +197,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 
 		// quit if acc finished and not paused
 		//if quitting || (doneTurns >= p.Turns && !paused) {
-		if (doneTurns >= p.Turns && !pause) {
+		if (doneTurns >= p.Turns && !paused) {
 			break
 		}
 
