@@ -209,8 +209,11 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		currentWorld := world
 		worldMutex.RUnlock()
 
+		cleanParams := p
+		cleanParams.Threads = 1 // FORCE distributed version to 1 thread
+
 		request := BrokerRequest{
-			Params: p,
+			Params: cleanParams,
 			World:  currentWorld,
 		}
 
