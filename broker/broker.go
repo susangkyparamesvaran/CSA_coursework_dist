@@ -165,8 +165,8 @@ func main() {
 
 	broker := &Broker{
 		workerAddresses: []string{
-			"172.31.30.142:8030",
-			//"172.31.30.21:8031",
+			//"127.0.0.1:8030",
+			"172.31.73.190:8030", // BENCHMARKDIST
 		},
 	}
 
