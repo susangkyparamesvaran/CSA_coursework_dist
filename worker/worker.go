@@ -52,7 +52,7 @@ func calculateNextStates(p gol.Params, world [][]byte, startY, endY int) [][]byt
 	for i := startY; i < endY; i++ {
 		for j := 0; j < w; j++ { //accessing each individual cell
 			count := 0
-			up := i - 1
+			
 
 			up := (i - 1 + h) % h
 			down := (i + 1) % h
