@@ -218,37 +218,42 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 			continue
 		}
 
-		///// STEP 6 CELLS FLIPPED///////////
-		// At the end of each turn, put all changed coordinates into a slice,
-		// and then send CellsFlipped event
-		// make a slice so as to compare the old row and the new row of the world
-		flippedCells := make([]util.Cell, 0)
-		// go row by row, then column by column
+		///// STEP 6 CELLS FLIPPED (SDL SAFE VERSION) /////////
+
+		// --- Make deep copy of old world ---
+		old := make([][]byte, len(world))
+		for i := range world {
+			old[i] = append([]byte(nil), world[i]...)
+		}
+
+		// Compute flipped cells
+		flippedCells := []util.Cell{}
 		for y := 0; y < p.ImageHeight; y++ {
 			for x := 0; x < p.ImageWidth; x++ {
-				if world[y][x] != response.World[y][x] {
+				if old[y][x] != response.World[y][x] {
 					flippedCells = append(flippedCells, util.Cell{X: x, Y: y})
 				}
 			}
 		}
 
-		// if there is at least one cell thats been flipped then we need to return the
-		// Cells Flipped event
+		// Send flipped events BEFORE replacing world
 		if len(flippedCells) > 0 {
 			turnMu.RLock()
 			currentTurn := turn + 1
 			turnMu.RUnlock()
+
 			c.events <- CellsFlipped{
 				CompletedTurns: currentTurn,
-				Cells:          flippedCells}
+				Cells:          flippedCells,
+			}
 		}
 
+		// NOW apply new world
 		worldMutex.Lock()
 		world = response.World
 		worldMutex.Unlock()
 
 		///// STEP 6 TURN COMPLETE///////////
-		// At the end of each turn we need to signal that a turn is completed
 		turnMu.Lock()
 		turn++
 		currentTurn := turn
@@ -257,6 +262,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		c.events <- TurnComplete{
 			CompletedTurns: currentTurn,
 		}
+
 	}
 
 	//Stop ticker after finishing all turns
