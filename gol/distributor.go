@@ -169,12 +169,9 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 				done <- true
 				ticker.Stop()
 
-				worldMutex.RLock()
 				turnMu.RLock()
-				saveImage(p, c, world, turn)
 				currentTurn := turn
 				turnMu.RUnlock()
-				worldMutex.RUnlock()
 
 				c.events <- StateChange{currentTurn, Quitting}
 				close(c.events)
