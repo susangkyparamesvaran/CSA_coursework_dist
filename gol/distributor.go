@@ -229,7 +229,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		err = client.Call("Broker.ProcessSection", request, &response)
 		if err != nil {
 			fmt.Println("Error calling broker.ProcessSection:", err)
-			quitting = true
+			//quitting = true , DONT QUIT SIMULATION!!
 			continue
 		}
 
