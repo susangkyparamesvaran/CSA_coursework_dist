@@ -9,8 +9,7 @@ import (
 	"uk.ac.bris.cs/gameoflife/gol"
 )
 
-type GOLWorker struct {
-}
+type GOLWorker struct{}
 
 // process the section the broker gives
 func (e *GOLWorker) ProcessSection(req gol.SectionRequest, res *gol.SectionResponse) error {
