@@ -214,6 +214,11 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		for i := range world {
     		currentWorld[i] = append([]byte(nil), world[i]...)
 		}
+
+		old := make([][]byte, len(world))
+		for i := range world {
+			old[i] = append([]byte(nil), world[i]...)
+		}
 		
 		worldMutex.RUnlock()
 
@@ -237,12 +242,12 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		///// STEP 6 CELLS FLIPPED (SDL SAFE VERSION) /////////
 
 		// --- Make deep copy of old world ---
-		worldMutex.RLock()
-		old := make([][]byte, len(world))
-		for i := range world {
-			old[i] = append([]byte(nil), world[i]...)
-		}
-		worldMutex.RUnlock()
+		//worldMutex.RLock()
+		//old := make([][]byte, len(world))
+		//for i := range world {
+			//old[i] = append([]byte(nil), world[i]...)
+		//}
+		//worldMutex.RUnlock()
 
 		// Compute flipped cells
 		flippedCells := []util.Cell{}
