@@ -52,10 +52,26 @@ func calculateNextStates(p gol.Params, world [][]byte, startY, endY int) [][]byt
 	for i := startY; i < endY; i++ {
 		for j := 0; j < w; j++ { //accessing each individual cell
 			count := 0
-			up := (i - 1 + h) % h
-			down := (i + 1) % h
-			left := (j - 1 + w) % w
-			right := (j + 1) % w
+			up := i - 1
+if up < 0 {
+    up = i // no neighbour above → use itself
+}
+
+down := i + 1
+if down >= h {
+    down = i // no neighbour below → use itself
+}
+
+left := j - 1
+if left < 0 {
+    left = j // no neighbour left
+}
+
+right := j + 1
+if right >= w {
+    right = j // no neighbour right
+}
+
 
 			//need to check all it's neighbors and state of it's cell
 			leftCell := world[i][left]
