@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/rpc"
 	"os"
+	"sync"
 	"time"
 
 	"uk.ac.bris.cs/gameoflife/util"
@@ -16,6 +17,19 @@ type distributorChannels struct {
 	ioFilename chan<- string
 	ioOutput   chan<- uint8
 	ioInput    <-chan uint8
+}
+
+func countAlive(world [][]byte) int {
+	count := 0
+	for y := range world {
+		for x := range world[y] {
+			if world[y][x] == 255 {
+				count++
+			}
+		}
+	}
+
+	return count
 }
 
 // distributor divides the work between workers and interacts with other goroutines.
@@ -35,7 +49,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		}
 	}
 
-	client, err := rpc.Dial("tcp", "98.92.27.195:8040") // your AWS public IP + port
+	client, err := rpc.Dial("tcp", "127.0.0.1:8040") // your AWS public IP + port
 	if err != nil {
 		fmt.Println("Error connecting to broker:", err)
 		return
@@ -43,30 +57,32 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 
 	defer client.Close()
 
+	var worldMutex sync.RWMutex
+	var turnMu sync.RWMutex
+
+	turn := 0
+
 	// Start ticker to report alive cells every 2 seconds
 	ticker := time.NewTicker(2 * time.Second)
 	//Channel used to sognal the goroutine to stop
 	done := make(chan bool)
-
-	turn := 0
 
 	go func() {
 		for {
 			select {
 			// Case runs every time the timer ticks (every 2 seconds)
 			case <-ticker.C:
-				var aliveCount int
 
-				err := client.Call("Broker.GetAliveCount", struct{}{}, &aliveCount)
-
-				if err != nil {
-					fmt.Println("Error calling GetAliveCount:", err)
-					continue
-				}
+				worldMutex.RLock()
+				turnMu.RLock()
+				currentTurn := turn
+				totalAlive := countAlive(world)
+				worldMutex.RUnlock()
+				turnMu.RUnlock()
 
 				c.events <- AliveCellsCount{
-					CompletedTurns: turn,
-					CellsCount:     aliveCount,
+					CompletedTurns: currentTurn,
+					CellsCount:     totalAlive,
 				}
 			case <-done:
 				return
@@ -103,31 +119,64 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 			case 'p':
 				if !paused {
 					paused = true
-					fmt.Println("paused at turn:", turn)
-					c.events <- StateChange{turn, Paused}
+
+					turnMu.RLock()
+					currentTurn := turn
+					turnMu.RUnlock()
+
+					fmt.Println("paused at turn:", currentTurn)
+					c.events <- StateChange{currentTurn, Paused}
 				} else {
 					paused = false
+
+					turnMu.RLock()
+					currentTurn := turn
+					turnMu.RUnlock()
+
 					fmt.Println("continuing")
-					c.events <- StateChange{turn, Executing}
+					c.events <- StateChange{currentTurn, Executing}
 				}
 			case 's':
+				worldMutex.RLock()
+				turnMu.RLock()
 				saveImage(p, c, world, turn)
+				turnMu.RUnlock()
+				worldMutex.RUnlock()
 			case 'q':
+				worldMutex.RLock()
+				turnMu.RLock()
 				saveImage(p, c, world, turn)
+				turnMu.RUnlock()
+				worldMutex.RUnlock()
+
 				client.Call("Broker.ControllerExit", Empty{}, &Empty{})
 				done <- true
 				ticker.Stop()
+
 				c.events <- StateChange{turn, Quitting}
 				fmt.Println("quitting, sending signal to worker")
 				close(c.events)
 				return
 
 			case 'k':
+				worldMutex.RLock()
+				turnMu.RLock()
 				saveImage(p, c, world, turn)
+				turnMu.RUnlock()
+				worldMutex.RUnlock()
+
 				client.Call("Broker.KillWorkers", Empty{}, &Empty{})
 				done <- true
 				ticker.Stop()
-				c.events <- StateChange{turn, Quitting}
+
+				worldMutex.RLock()
+				turnMu.RLock()
+				saveImage(p, c, world, turn)
+				currentTurn := turn
+				turnMu.RUnlock()
+				worldMutex.RUnlock()
+
+				c.events <- StateChange{currentTurn, Quitting}
 				close(c.events)
 				fmt.Println("shutting down full system")
 				os.Exit(0)
@@ -137,8 +186,12 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		default:
 		}
 
+		turnMu.RLock()
+		doneTurns := turn
+		turnMu.RUnlock()
+
 		// quit if acc finished and not paused
-		if quitting || (turn >= p.Turns && !paused) {
+		if quitting || (doneTurns >= p.Turns && !paused) {
 			break
 		}
 
@@ -147,9 +200,13 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 			continue
 		}
 
+		worldMutex.RLock()
+		currentWorld := world
+		worldMutex.RUnlock()
+
 		request := BrokerRequest{
 			Params: p,
-			World:  world,
+			World:  currentWorld,
 		}
 
 		var response BrokerResponse
@@ -178,20 +235,28 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		// if there is at least one cell thats been flipped then we need to return the
 		// Cells Flipped event
 		if len(flippedCells) > 0 {
+			turnMu.RLock()
+			currentTurn := turn + 1
+			turnMu.RUnlock()
 			c.events <- CellsFlipped{
-				CompletedTurns: turn + 1,
+				CompletedTurns: currentTurn,
 				Cells:          flippedCells}
 		}
 
+		worldMutex.Lock()
 		world = response.World
+		worldMutex.Unlock()
 
 		///// STEP 6 TURN COMPLETE///////////
 		// At the end of each turn we need to signal that a turn is completed
-		c.events <- TurnComplete{
-			CompletedTurns: turn + 1,
-		}
+		turnMu.Lock()
+		turn++
+		currentTurn := turn
+		turnMu.Unlock()
 
-		turn++ //advance turn
+		c.events <- TurnComplete{
+			CompletedTurns: currentTurn,
+		}
 	}
 
 	//Stop ticker after finishing all turns
@@ -199,12 +264,22 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 	ticker.Stop()
 
 	// TODO: Report the final state using FinalTurnCompleteEvent.
+	worldMutex.RLock()
 	aliveCells := AliveCells(world, p.ImageWidth, p.ImageHeight)
-	c.events <- FinalTurnComplete{CompletedTurns: turn, Alive: aliveCells}
+	worldMutex.RUnlock()
+
+	turnMu.RLock()
+	finalTurn := turn
+	turnMu.RUnlock()
+
+	c.events <- FinalTurnComplete{CompletedTurns: finalTurn, Alive: aliveCells}
 
 	//save final output
-	saveImage(p, c, world, turn)
-	c.events <- StateChange{turn, Quitting}
+	worldMutex.RLock()
+	saveImage(p, c, world, finalTurn)
+	worldMutex.RUnlock()
+
+	c.events <- StateChange{finalTurn, Quitting}
 
 	//Close the channels to stop the SDL goroutine gracefully. Removing may cause deadlock.
 	close(c.events)
@@ -247,5 +322,3 @@ func saveImage(p Params, c distributorChannels, world [][]byte, turn int) {
 	c.events <- ImageOutputComplete{CompletedTurns: turn, Filename: outFileName}
 
 }
-
-
