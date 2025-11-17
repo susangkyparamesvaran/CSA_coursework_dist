@@ -115,7 +115,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 
 	// variables for step 5
 	paused := false
-	quitting := false
+	//quitting := false
 
 	for {
 		select {
@@ -196,7 +196,8 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		turnMu.RUnlock()
 
 		// quit if acc finished and not paused
-		if quitting || (doneTurns >= p.Turns && !paused) {
+		//if quitting || (doneTurns >= p.Turns && !paused) {
+		if (doneTurns >= p.Turns && !pause) {
 			break
 		}
 
@@ -236,10 +237,12 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		///// STEP 6 CELLS FLIPPED (SDL SAFE VERSION) /////////
 
 		// --- Make deep copy of old world ---
+		worldMutex.RLock()
 		old := make([][]byte, len(world))
 		for i := range world {
 			old[i] = append([]byte(nil), world[i]...)
 		}
+		worldMutex.RUnlock()
 
 		// Compute flipped cells
 		flippedCells := []util.Cell{}
