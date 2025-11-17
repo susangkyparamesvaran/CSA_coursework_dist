@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/rpc"
 	"os"
+	"sync"
 
 	"uk.ac.bris.cs/gameoflife/gol"
 )
@@ -15,6 +16,7 @@ type Broker struct {
 	workerAddresses []string
 	turn            int
 	alive           int
+	mu              sync.RWMutex
 }
 
 type section struct {
@@ -52,20 +54,6 @@ func assignSections(height, workers int) []section {
 		start = end
 	}
 	return sections
-}
-
-// function to count the number of alive cells
-func countAlive(world [][]byte) int {
-	count := 0
-	for y := range world {
-		for x := range world[y] {
-			if world[y][x] == 255 {
-				count++
-			}
-		}
-	}
-
-	return count
 }
 
 // one iteration of the game using all workers
@@ -146,15 +134,7 @@ func (broker *Broker) ProcessSection(req gol.BrokerRequest, res *gol.BrokerRespo
 		}
 	}
 
-	broker.turn++
-	broker.alive = countAlive(newWorld)
-
 	res.World = newWorld
-	return nil
-}
-
-func (broker *Broker) GetAliveCount(_ struct{}, out *int) error {
-	*out = broker.alive
 	return nil
 }
 
@@ -185,8 +165,8 @@ func main() {
 
 	broker := &Broker{
 		workerAddresses: []string{
-			"44.211.98.86:8030",
-			"3.236.245.14:8030",
+			"44.220.252.165:8030",
+			"3.237.47.235:8030",
 		},
 	}
 
