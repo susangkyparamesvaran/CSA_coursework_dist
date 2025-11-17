@@ -206,7 +206,14 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		}
 
 		worldMutex.RLock()
-		currentWorld := world
+		//currentWorld := world
+
+		// DEEP COPY OF WORLD
+		currentWorld := make([][]byte, len(world))
+		for i := range world {
+    		currentWorld[i] = append([]byte(nil), world[i]...)
+		}
+		
 		worldMutex.RUnlock()
 
 		cleanParams := p
