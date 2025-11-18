@@ -98,11 +98,8 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 
 	c.events <- StateChange{turn, Executing}
 
-	// for each turn it needs to split up the jobs,
-	// such that there is one job from each section for each thread
-	// needs to gather the results and then put them together for the newstate of world
-
-	// variables for step 5
+	// for each turn it needs to split up the jobs, such that there is one job from each section for each thread, it needs to gather the results and then put them together for the newstate of world
+	
 	paused := false
 	quitting := false
 
@@ -181,7 +178,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		doneTurns := turn
 		turnMu.RUnlock()
 
-		// quit if acc finished and not paused
+		
 		if quitting || (doneTurns >= p.Turns && !paused) {
 			break
 		}
@@ -210,11 +207,8 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		}
 
 		
-		// At the end of each turn, put all changed coordinates into a slice,
-		// and then send CellsFlipped event
-		// make a slice so as to compare the old row and the new row of the world
+		// At the end of each turn, put all changed coordinates into a slice, and then send CellsFlipped event to make a slice so as to compare the old row and the new row of the world
 		flippedCells := make([]util.Cell, 0)
-		// go row by row, then column by column
 		for y := 0; y < p.ImageHeight; y++ {
 			for x := 0; x < p.ImageWidth; x++ {
 				if world[y][x] != response.World[y][x] {
@@ -223,8 +217,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 			}
 		}
 
-		// if there is at least one cell thats been flipped then we need to return the
-		// Cells Flipped event
+		// if there is at least one cell thats been flipped then we need to return the Cells Flipped event
 		if len(flippedCells) > 0 {
 			turnMu.RLock()
 			currentTurn := turn + 1
@@ -291,25 +284,21 @@ func AliveCells(world [][]byte, width, height int) []util.Cell {
 
 // helper function to handle image saves
 func saveImage(p Params, c distributorChannels, world [][]byte, turn int) {
-	// Write final world to output file (PGM)
-	// Construct the output filename in the required format
-	// Example: "512x512x100" for a 512x512 world after 100 turns
 	outFileName := fmt.Sprintf("%dx%dx%d", p.ImageWidth, p.ImageHeight, turn)
-	c.ioCommand <- ioOutput     // telling the i/o goroutine that we are starting an output operation
-	c.ioFilename <- outFileName // sending the filename to io goroutine
+	c.ioCommand <- ioOutput     
+	c.ioFilename <- outFileName 
 
 	for y := 0; y < p.ImageHeight; y++ {
 		for x := 0; x < p.ImageWidth; x++ {
-			//writing the pixel value to the ioOutput channel
-			c.ioOutput <- world[y][x] //grayscale value for that pixel (0 or 255)
+			
+			c.ioOutput <- world[y][x] 
 		}
 	}
 
-	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle
 	<-c.ioIdle
 
-	// once saved, notify the SDL event system (important for Step 5)
+
 	c.events <- ImageOutputComplete{CompletedTurns: turn, Filename: outFileName}
 
 }
