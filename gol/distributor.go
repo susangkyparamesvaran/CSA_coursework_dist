@@ -35,8 +35,6 @@ func countAlive(world [][]byte) int {
 // distributor divides the work between workers and interacts with other goroutines.
 func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 
-	// TODO: Create a 2D slice to store the world.
-
 	filename := fmt.Sprintf("%dx%d", p.ImageWidth, p.ImageHeight)
 	c.ioCommand <- ioInput
 	c.ioFilename <- filename
@@ -64,7 +62,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 
 	// Start ticker to report alive cells every 2 seconds
 	ticker := time.NewTicker(2 * time.Second)
-	//Channel used to sognal the goroutine to stop
+	//Channel used to signal the goroutine to stop
 	done := make(chan bool)
 
 	go func() {
@@ -101,12 +99,8 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 	c.events <- StateChange{turn, Executing}
 
 	// for each turn it needs to split up the jobs,
-	// such that there is one job from eahc section for each thread
+	// such that there is one job from each section for each thread
 	// needs to gather the results and then put them together for the newstate of world
-	// TODO: Execute all turns of the Game of Life.
-
-	//----------------------------------------------------------------------------------------------------------//
-	//----------------------------------------------------------------------------------------------------------//
 
 	// variables for step 5
 	paused := false
@@ -215,7 +209,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 			continue
 		}
 
-		///// STEP 6 CELLS FLIPPED///////////
+		// STEP 6 : CELLS FLIPPED
 		// At the end of each turn, put all changed coordinates into a slice,
 		// and then send CellsFlipped event
 		// make a slice so as to compare the old row and the new row of the world
@@ -244,7 +238,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		world = response.World
 		worldMutex.Unlock()
 
-		///// STEP 6 TURN COMPLETE///////////
+		//STEP 6: TURN COMPLETE
 		// At the end of each turn we need to signal that a turn is completed
 		turnMu.Lock()
 		turn++
@@ -260,7 +254,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 	done <- true
 	ticker.Stop()
 
-	// TODO: Report the final state using FinalTurnCompleteEvent.
+	
 	worldMutex.RLock()
 	aliveCells := AliveCells(world, p.ImageWidth, p.ImageHeight)
 	worldMutex.RUnlock()
