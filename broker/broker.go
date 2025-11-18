@@ -167,6 +167,7 @@ func main() {
 		workerAddresses: []string{
 			"172.31.66.58:8030", //worker1
 			"172.31.73.89:8030", //worker2
+			"172.31.67.51:8030", //worker3
 		},
 	}
 
