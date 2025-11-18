@@ -35,7 +35,6 @@ func countAlive(world [][]byte) int {
 // distributor divides the work between workers and interacts with other goroutines.
 func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 
-	// TODO: Create a 2D slice to store the world.
 
 	filename := fmt.Sprintf("%dx%d", p.ImageWidth, p.ImageHeight)
 	c.ioCommand <- ioInput
@@ -105,17 +104,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 
 	c.events <- StateChange{turn, Executing}
 
-	// for each turn it needs to split up the jobs,
-	// such that there is one job from eahc section for each thread
-	// needs to gather the results and then put them together for the newstate of world
-	// TODO: Execute all turns of the Game of Life.
-
-	//----------------------------------------------------------------------------------------------------------//
-	//----------------------------------------------------------------------------------------------------------//
-
-	// variables for step 5
 	paused := false
-	//quitting := false
 
 	for {
 		select {
@@ -195,8 +184,6 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		doneTurns := turn
 		turnMu.RUnlock()
 
-		// quit if acc finished and not paused
-		//if quitting || (doneTurns >= p.Turns && !paused) {
 		if (doneTurns >= p.Turns && !paused) {
 			break
 		}
@@ -207,7 +194,6 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		}
 
 		worldMutex.RLock()
-		//currentWorld := world
 
 		// DEEP COPY OF WORLD
 		currentWorld := make([][]byte, len(world))
@@ -235,19 +221,9 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		err = client.Call("Broker.ProcessSection", request, &response)
 		if err != nil {
 			fmt.Println("Error calling broker.ProcessSection:", err)
-			//quitting = true , DONT QUIT SIMULATION!!
 			continue
 		}
 
-		///// STEP 6 CELLS FLIPPED (SDL SAFE VERSION) /////////
-
-		// --- Make deep copy of old world ---
-		//worldMutex.RLock()
-		//old := make([][]byte, len(world))
-		//for i := range world {
-			//old[i] = append([]byte(nil), world[i]...)
-		//}
-		//worldMutex.RUnlock()
 
 		// Compute flipped cells
 		flippedCells := []util.Cell{}
@@ -276,7 +252,6 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		world = response.World
 		worldMutex.Unlock()
 
-		///// STEP 6 TURN COMPLETE///////////
 		turnMu.Lock()
 		turn++
 		currentTurn := turn
@@ -292,7 +267,6 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 	done <- true
 	ticker.Stop()
 
-	// TODO: Report the final state using FinalTurnCompleteEvent.
 	worldMutex.RLock()
 	aliveCells := AliveCells(world, p.ImageWidth, p.ImageHeight)
 	worldMutex.RUnlock()
@@ -329,17 +303,13 @@ func AliveCells(world [][]byte, width, height int) []util.Cell {
 
 // helper function to handle image saves
 func saveImage(p Params, c distributorChannels, world [][]byte, turn int) {
-	// Write final world to output file (PGM)
-	// Construct the output filename in the required format
-	// Example: "512x512x100" for a 512x512 world after 100 turns
 	outFileName := fmt.Sprintf("%dx%dx%d", p.ImageWidth, p.ImageHeight, turn)
-	c.ioCommand <- ioOutput     // telling the i/o goroutine that we are starting an output operation
-	c.ioFilename <- outFileName // sending the filename to io goroutine
+	c.ioCommand <- ioOutput     
+	c.ioFilename <- outFileName 
 
 	for y := 0; y < p.ImageHeight; y++ {
 		for x := 0; x < p.ImageWidth; x++ {
-			//writing the pixel value to the ioOutput channel
-			c.ioOutput <- world[y][x] //grayscale value for that pixel (0 or 255)
+			c.ioOutput <- world[y][x] 
 		}
 	}
 
