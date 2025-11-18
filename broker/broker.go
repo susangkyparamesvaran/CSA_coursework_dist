@@ -166,6 +166,7 @@ func main() {
 	broker := &Broker{
 		workerAddresses: []string{
 			"172.31.66.58:8030", //worker1
+			"172.31.73.89:8030", //worker2
 		},
 	}
 
