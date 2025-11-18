@@ -209,7 +209,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 			continue
 		}
 
-		// STEP 6 : CELLS FLIPPED
+		
 		// At the end of each turn, put all changed coordinates into a slice,
 		// and then send CellsFlipped event
 		// make a slice so as to compare the old row and the new row of the world
@@ -238,7 +238,7 @@ func distributor(p Params, c distributorChannels, keypress <-chan rune) {
 		world = response.World
 		worldMutex.Unlock()
 
-		//STEP 6: TURN COMPLETE
+		
 		// At the end of each turn we need to signal that a turn is completed
 		turnMu.Lock()
 		turn++
